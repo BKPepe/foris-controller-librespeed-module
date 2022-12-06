@@ -21,8 +21,11 @@ import logging
 
 from foris_controller.handler_base import BaseOpenwrtHandler
 from foris_controller.utils import logger_wrapper
-
-from foris_controller_backends.librespeed import LibreSpeedCmds, LibreSpeedUci
+from foris_controller_backends.librespeed import (
+    LibreSpeedCmds,
+    LibreSpeedData,
+    LibreSpeedUci,
+)
 
 from .. import Handler
 
@@ -33,15 +36,21 @@ class OpenwrtLibreSpeedHandler(Handler, BaseOpenwrtHandler):
 
     cmds = LibreSpeedCmds()
     uci = LibreSpeedUci()
+    data = LibreSpeedData()
 
     @logger_wrapper(logger)
-    def get_slices(self):
-        return OpenwrtLibreSpeedHandler.uci.get_slices()
+    def get_settings(self):
+        return self.uci.get_settings()
 
     @logger_wrapper(logger)
-    def set_slices(self, value):
-        return OpenwrtLibreSpeedHandler.uci.set_slices(value)
+    def update_settings(self, autostart_enabled):
+        return self.uci.update_settings(autostart_enabled)
 
     @logger_wrapper(logger)
-    def list(self):
-        return OpenwrtLibreSpeedHandler.cmds.list()
+    def get_data(self, months, until):
+        data = self.data.read_records(months, until)
+        return {"performed_tests": data}
+
+    @logger_wrapper(logger)
+    def measure(self, notify, exit_notify, reset_notify):
+        return OpenwrtLibreSpeedHandler.cmds.measure(notify, exit_notify, reset_notify)

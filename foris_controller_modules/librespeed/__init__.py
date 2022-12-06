@@ -18,27 +18,48 @@
 #
 
 import logging
+from datetime import date
 
-from foris_controller.module_base import BaseModule
 from foris_controller.handler_base import wrap_required_functions
+from foris_controller.module_base import BaseModule
 
 
 class LibreSpeedModule(BaseModule):
     logger = logging.getLogger(__name__)
 
-    def action_get_slices(self, data):
-        return {"slices": self.handler.get_slices()}
+    def action_get_settings(self, data):
+        return self.handler.get_settings()
 
-    def action_set_slices(self, data):
-        res = {}
-        res = self.handler.set_slices(data["slices"])
-        self.notify("set_slices", {"slices": data["slices"]})
+    def action_update_settings(self, data):
+        res = self.handler.update_settings(**data)
+        if res:
+            self.notify("update_settings", data)
         return {"result": res}
 
-    def action_list(self, data):
-        return {"records": self.handler.list()}
+    def action_get_data(self, data):
+        months = data.get("months", 2)
+        until = date.fromisoformat(data.get("until", date.today().strftime("%Y-%m-%d")))
+        return self.handler.get_data(months, until)
+
+    def action_measure(self, data):
+        def notify(msg):
+            self.notify("measure", msg)
+
+        def exit_notify(msg):
+            self.notify("measure", msg)
+
+        return {
+            "async_id": self.handler.measure(notify, exit_notify, self.reset_notify)
+        }
 
 
-@wrap_required_functions(["set_slices", "get_slices", "list"])
-class Handler(object):
+@wrap_required_functions(
+    [
+        "get_settings",
+        "update_settings",
+        "get_data",
+        "measure",
+    ]
+)
+class Handler:
     pass

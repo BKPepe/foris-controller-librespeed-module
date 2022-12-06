@@ -44,6 +44,7 @@ setup(
     description=DESCRIPTION,
     long_description=open("README.rst").read(),
     install_requires=[
+        "python-dateutil",
         "foris-controller @ git+https://gitlab.nic.cz/turris/foris-controller/foris-controller.git",
     ],
     setup_requires=["pytest-runner", "flake8"],

@@ -17,77 +17,132 @@
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
 #
 
-import pytest
+import json
+import shutil
+import textwrap
+from pathlib import Path
 
+import pytest
+from dateutil.parser import parse
 from foris_controller_testtools.fixtures import (
-    only_message_buses,
+    FILE_ROOT_PATH,
     backend,
     infrastructure,
-    notify_api,
+    mosquitto_test,
+    start_buses,
+    ubusd_test,
+    uci_configs_init,
 )
+from foris_controller_testtools.utils import FileFaker
+
+FAKE_DATA = [
+    {
+        "time": "2022-01-01T00:00:00.000000000+01:00",
+        "server": "Prague, CZ.NIC",
+        "speed_download": 23.3,
+        "speed_upload": 53.3,
+        "ping": 0.57,
+        "jitter": 0.87,
+    },
+    {
+        "time": "2022-01-02T00:00:00.000000000+01:00",
+        "server": "Prague, CZ.NIC",
+        "speed_download": 22.2,
+        "speed_upload": 52.2,
+        "ping": 0.52,
+        "jitter": 0.88,
+    },
+]
 
 
-def test_get_slices(infrastructure):
+@pytest.fixture(scope="function")
+def librespeed_data(request):
+    # TODO reformat server section
+    base_path = Path("/tmp/librespeed-data")
+    shutil.rmtree(base_path, ignore_errors=True)
+
+    base_path.mkdir(parents=True)
+    for record in FAKE_DATA:
+        date = parse(record["time"])
+        path_dir = base_path / f"{date.year}-{date.month:02}"
+        path_dir.mkdir(exist_ok=True)
+        path = path_dir / f"{record['time']}.json"
+
+        with path.open("w") as f:
+            json.dump(record, f)
+
+    yield base_path, FAKE_DATA
+
+    shutil.rmtree(base_path)
+
+
+def test_settings(uci_configs_init, infrastructure, start_buses):
+    notifications = infrastructure.get_notifications()
+
     res = infrastructure.process_message(
-        {"module": "librespeed", "action": "get_slices", "kind": "request"}
+        {
+            "module": "librespeed",
+            "action": "get_settings",
+            "kind": "request",
+        }
     )
-    assert "errors" not in res
-    assert "data" in res
-    assert "slices" in res["data"]
+    assert set(res["data"].keys()) == {"autostart_enabled"}
+    new_autostart_enabled = not res["data"]["autostart_enabled"]
 
-
-@pytest.mark.parametrize("slices", [10, 15])
-def test_set_slices(infrastructure, slices):
-    filters = [("librespeed", "set_slices")]
-
-    notifications = infrastructure.get_notifications(filters=filters)
     res = infrastructure.process_message(
-        {"module": "librespeed", "action": "set_slices", "kind": "request", "data": {"slices": slices}}
+        {
+            "module": "librespeed",
+            "action": "update_settings",
+            "kind": "request",
+            "data": {
+                "autostart_enabled": new_autostart_enabled,
+            },
+        }
     )
-    notifications = infrastructure.get_notifications(notifications, filters=filters)
+    assert res["data"] == {"result": True}
+
+    notifications = infrastructure.get_notifications(notifications)
     assert notifications[-1] == {
         "module": "librespeed",
-        "action": "set_slices",
+        "action": "update_settings",
         "kind": "notification",
-        "data": {"slices": slices},
+        "data": {"autostart_enabled": new_autostart_enabled},
     }
+
     res = infrastructure.process_message(
-        {"module": "librespeed", "action": "get_slices", "kind": "request"}
+        {
+            "module": "librespeed",
+            "action": "get_settings",
+            "kind": "request",
+        }
     )
-    assert res["data"]["slices"] == slices
-
-
-@pytest.mark.parametrize("slices", [10, 15])
-def test_reload_chart_notification(notify_api, infrastructure, slices):
-    filters = [("librespeed", "reload_chart")]
-    notify = notify_api
-    notifications = infrastructure.get_notifications(filters=filters)
-    notify("librespeed", "reload_chart", {})
-    notifications = infrastructure.get_notifications(notifications, filters=filters)
-    assert notifications[-1] == {
+    assert res == {
         "module": "librespeed",
-        "action": "reload_chart",
-        "kind": "notification",
-        "data": {},
+        "action": "get_settings",
+        "kind": "reply",
+        "data": {
+            "autostart_enabled": new_autostart_enabled,
+        },
     }
 
 
-def test_list(infrastructure):
-    res = infrastructure.process_message({"module": "librespeed", "action": "list", "kind": "request"})
-    assert "records" in res["data"]
+def test_get_data(uci_configs_init, infrastructure, start_buses, librespeed_data):
+    res = infrastructure.process_message(
+        {
+            "module": "librespeed",
+            "action": "get_data",
+            "kind": "request",
+        }
+    )
+    assert set(res["data"].keys()) == {"performed_tests"}
 
 
-@pytest.mark.only_message_buses(["mqtt"])
-def test_timestamp_announcements(infrastructure):
-    filters = [("librespeed", "announce_time")]
-
-    notifications = infrastructure.get_notifications([], filters=filters)
-    assert "timestamp" in notifications[-1]["data"]
-    timestamp1 = notifications[-1]["data"]["timestamp"]
-
-    notifications = infrastructure.get_notifications(notifications, filters=filters)
-    assert "timestamp" in notifications[-1]["data"]
-    timestamp2 = notifications[-1]["data"]["timestamp"]
-
-    assert timestamp1 < timestamp2
-    assert round(timestamp2 - timestamp1, 0) == 2.0  # there is 2s delay in announcer
+def test_measure(uci_configs_init, infrastructure, start_buses):
+    res = infrastructure.process_message(
+        {
+            "module": "librespeed",
+            "action": "measure",
+            "kind": "request",
+        }
+    )
+    assert set(res["data"].keys()) == {"async_id"}

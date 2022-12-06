@@ -17,51 +17,110 @@
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
 #
 
+import json
 import logging
-import random
+from datetime import date
+from pathlib import Path
 
-# import json
-
-from foris_controller_backends.cmdline import BaseCmdLine
-from foris_controller_backends.uci import UciBackend, get_option_named
+from dateutil.relativedelta import relativedelta
+from foris_controller_backends.cmdline import AsyncCommand
+from foris_controller_backends.files import BaseFile
+from foris_controller_backends.uci import (
+    UciBackend,
+    get_option_named,
+    parse_bool,
+    store_bool,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class LibreSpeedUci:
-    ###
-    slices = 10
-    ###
+    def get_settings(self):
+        with UciBackend() as backend:
+            backend.add_section("librespeed", "client", "client")
+            data = backend.read("librespeed")
+            autostart_enabled = parse_bool(
+                get_option_named(data, "librespeed", "client", "autostart_enabled", "0")
+            )
+        return {
+            "autostart_enabled": autostart_enabled,
+        }
 
-    def get_slices(self):
-        # with UciBackend() as backend:
-        #    data = backend.read("librespeed")
-        # return int(get_option_named(data, "librespeed", "data", "slices"))
-        ###
-        return LibreSpeedUci.slices
-        ###
+    def update_settings(self, autostart_enabled):
 
-    def set_slices(self, slices):
-        # with UciBackend() as backend:
-        #    backend.set_option("librespeed", "data", "slices", slices)
-        ###
-        LibreSpeedUci.slices = slices
-        ###
+        with UciBackend() as backend:
+            backend.add_section("librespeed", "client", "client")
+            backend.set_option(
+                "librespeed",
+                "client",
+                "autostart_enabled",
+                store_bool(autostart_enabled),
+            )
         return True
 
+    def get_params(self) -> dict:
+        with UciBackend() as backend:
+            backend.add_section("librespeed", "client", "client")
+            data = backend.read("librespeed")
+            data_dir = get_option_named(
+                data, "librespeed", "client", "data_dir", "/tmp/librespeed-data/"
+            )
+        return {"data_dir": data_dir}
 
-class LibreSpeedCmds(BaseCmdLine):
-    ###
-    data = [list(e) for e in enumerate([random.randrange(100) for _ in range(LibreSpeedUci.slices)])]
-    ###
 
-    def list(self):
-        # return json.loads(self._run_command("<command_to_obtain_data>")[1])
-        ###
-        del LibreSpeedCmds.data[0]
-        while len(LibreSpeedCmds.data) < LibreSpeedUci.slices:
-            LibreSpeedCmds.data.append([LibreSpeedCmds.data[-1][0] + 1, random.randrange(100)])
-        while len(LibreSpeedCmds.data) > LibreSpeedUci.slices:
-            del LibreSpeedCmds.data[0]
-        return LibreSpeedCmds.data
-        ###
+class LibreSpeedData(BaseFile):
+    def read_records(self, months: int, until: date):
+        until = until.replace(day=1)
+
+        # Get months
+        month_range = reversed([until - relativedelta(months=i) for i in range(months)])
+
+        params = LibreSpeedUci().get_params()
+
+        records = []
+        for month in month_range:
+            month_path = Path(params["data_dir"]) / f"{month.year:04}-{month.month:02}"
+            record_files = sorted(month_path.glob("*.json"))
+            for record_file in record_files:
+                with record_file.open("r") as f:
+                    inner_records = json.load(f)
+                    for record in inner_records:
+                        records.append(
+                            {
+                                "server": record.get("server", {}).get("name"),
+                                "speed_upload": float(record.get("upload", -1)),
+                                "speed_download": float(record.get("download", -1)),
+                                "ping": float(record.get("ping", -1)),
+                                "jitter": float(record.get("jitter", -1)),
+                                "time": record.get("timestamp"),
+                            }
+                        )
+
+        return records
+
+
+class LibreSpeedCmds(AsyncCommand):
+    def measure(self, notify, exit_notify, reset_notify):
+        logger.debug("Starting to measure network speed.")
+
+        def handler_exit(process_data):
+            exit_notify(
+                {"async_id": process_data.id, "passed": process_data.get_retval() == 0}
+            )
+            logger.debug(
+                "Measuring using librespeed finished: (retval=%d)"
+                % process_data.get_retval()
+            )
+
+        params = LibreSpeedUci().get_params()
+
+        process_id = self.start_process(
+            ["/usr/bin/turris-librespeed", "--data-dir", params["data_dir"]],
+            [],
+            handler_exit,
+            reset_notify,
+        )
+
+        logger.debug("Measuring network speed started - '%s'." % process_id)
+        return process_id

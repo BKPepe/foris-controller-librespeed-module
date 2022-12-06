@@ -18,7 +18,11 @@
 #
 
 import logging
+import random
+from datetime import date
 
+from dateutil.parser import parse
+from dateutil.relativedelta import relativedelta
 from foris_controller.handler_base import BaseMockHandler
 from foris_controller.utils import logger_wrapper
 
@@ -26,20 +30,52 @@ from .. import Handler
 
 logger = logging.getLogger(__name__)
 
+FAKE_DATA = [
+    {
+        "time": "2022-01-01T00:00:00.000000000+01:00",
+        "server": "Prague, CZ.NIC",
+        "speed_download": 23.3,
+        "speed_upload": 53.3,
+        "ping": 0.57,
+        "jitter": 0.87,
+    },
+    {
+        "time": "2022-01-02T00:00:00.000000000+01:00",
+        "server": "Prague, CZ.NIC",
+        "speed_download": 22.2,
+        "speed_upload": 52.2,
+        "ping": 0.52,
+        "jitter": 0.88,
+    },
+]
+
 
 class MockLibreSpeedHandler(Handler, BaseMockHandler):
-    slices = 10
-    data = [list(e) for e in enumerate(range(10))]
+    autostart_enabled = True
 
     @logger_wrapper(logger)
-    def get_slices(self):
-        return MockLibreSpeedHandler.slices
+    def get_settings(self):
+        return {
+            "autostart_enabled": self.autostart_enabled,
+        }
 
     @logger_wrapper(logger)
-    def set_slices(self, value):
-        MockLibreSpeedHandler.slices = value
+    def update_settings(self, autostart_enabled):
+        self.autostart_enabled = autostart_enabled
         return True
 
     @logger_wrapper(logger)
-    def list(self):
-        return MockLibreSpeedHandler.data[: MockLibreSpeedHandler.slices]
+    def get_data(self, months: int, until: date):
+        next_month = until.replace(day=1) + relativedelta(months=1)
+        first_month = next_month - relativedelta(months=months)
+        return {
+            "performed_tests": [
+                e
+                for e in FAKE_DATA
+                if first_month <= parse(e["time"]).date() < next_month
+            ]
+        }
+
+    @logger_wrapper(logger)
+    def measure(self, notify, exit_notify, reset_notify):
+        return "%032X" % random.randrange(2**32)

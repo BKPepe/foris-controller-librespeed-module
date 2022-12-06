@@ -34,7 +34,9 @@ def main():
     # Parse the command line options
     parser = argparse.ArgumentParser(prog="turris-librespeed")
     parser.add_argument("--version", action="version", version=__version__)
-    parser.add_argument("--data-dir", default="/tmp/librespeed-data/", type=Path, required=False)
+    parser.add_argument(
+        "--data-dir", default="/tmp/librespeed-data/", type=Path, required=False
+    )
     parser.add_argument("--server", type=int, required=False)
     parser.add_argument("--bin", default="librespeed-cli", required=False)
 
@@ -72,7 +74,7 @@ def main():
         print(e)
         sys.exit(1)
 
-    target_dir = options.data_dir / f"{date.year}-{date.month}"
+    target_dir = options.data_dir / f"{date.year:04}-{date.month:02}"
     try:
         target_dir.mkdir(parents=True, exist_ok=True)
     except Exception as e:
@@ -80,7 +82,9 @@ def main():
         sys.exit(1)
 
     # Store to .tmp file first
-    with tempfile.NamedTemporaryFile("w", suffix="tmp", dir=target_dir, delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        "w", suffix="tmp", dir=target_dir, delete=False
+    ) as f:
         f.write(json.dumps(parsed))
         f.flush()
 
