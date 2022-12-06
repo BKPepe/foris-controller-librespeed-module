@@ -1,0 +1,38 @@
+before_script:
+  - pip install virtualenv
+  - virtualenv -p "$(which python)" /tmp/test
+
+stages:
+  - test
+  - build
+  - publish
+
+.run_script: &run_script
+  script:
+    - source /tmp/test/bin/activate
+
+    - pip install .
+
+    - python setup.py test --addopts="--backend openwrt --backend mock"
+
+test_python3:
+  image: registry.nic.cz/turris/foris-ci/python3
+  stage: test
+  <<: *run_script
+
+flake8:
+  image: registry.nic.cz/turris/foris-ci/python3
+  stage: test
+  script:
+    - python setup.py flake8
+
+include:
+  - remote: "https://gitlab.nic.cz/turris/foris-controller/packages/-/raw/master/templates/python.yml"
+
+build::python:
+  rules:
+    - when: always
+
+publish::python::gitlab:
+  rules:
+    - when: always
