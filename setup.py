@@ -40,17 +40,23 @@ setup(
     ],
     package_data={"foris_controller_modules.librespeed": ["schema", "schema/*.json"]},
     namespace_packages=["foris_controller_modules", "foris_controller_backends"],
-    license='GPL-3.0-only',
+    license="GPL-3.0-only",
     description=DESCRIPTION,
     long_description=open("README.rst").read(),
     install_requires=[
-        "foris-controller @ git+https://gitlab.nic.cz/turris/foris-controller/foris-controller.git"
+        "foris-controller @ git+https://gitlab.nic.cz/turris/foris-controller/foris-controller.git",
     ],
     setup_requires=["pytest-runner", "flake8"],
-    tests_require=["pytest", "foris-controller-testtools", "foris-client", "ubus", "paho-mqtt"],
+    tests_require=[
+        "pytest",
+        "foris-controller-testtools",
+        "foris-client",
+        "ubus",
+        "paho-mqtt",
+    ],
     entry_points={
-        "foris_controller_announcer": [
-            "librespeed = foris_controller_librespeed_module.announcer:make_time_message"
+        "console_scripts": [
+            "turris-librespeed = foris_controller_librespeed_module.__main__:main"
         ]
     },
     dependency_links=[
