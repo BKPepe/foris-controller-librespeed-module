@@ -43,10 +43,7 @@ setup(
     license="GPL-3.0-only",
     description=DESCRIPTION,
     long_description=open("README.rst").read(),
-    install_requires=[
-        "python-dateutil",
-        "foris-controller @ git+https://gitlab.nic.cz/turris/foris-controller/foris-controller.git",
-    ],
+    install_requires=["python-dateutil", "foris-controller"],
     setup_requires=["pytest-runner", "flake8"],
     tests_require=[
         "pytest",
@@ -60,10 +57,6 @@ setup(
             "turris-librespeed = foris_controller_librespeed_module.__main__:main"
         ]
     },
-    dependency_links=[
-        "git+https://gitlab.nic.cz/turris/foris-controller/foris-controller-testtools.git#egg=foris-controller-testtools",
-        "git+https://gitlab.nic.cz/turris/foris-controller/foris-client.git#egg=foris-client",
-    ],
     include_package_data=True,
     zip_safe=False,
 )
