@@ -24,15 +24,6 @@ from pathlib import Path
 
 import pytest
 from dateutil.parser import parse
-from foris_controller_testtools.fixtures import (
-    FILE_ROOT_PATH,
-    backend,
-    infrastructure,
-    mosquitto_test,
-    start_buses,
-    ubusd_test,
-    uci_configs_init,
-)
 from foris_controller_testtools.utils import FileFaker
 
 FAKE_DATA = [
