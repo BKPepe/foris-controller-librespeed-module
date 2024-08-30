@@ -31,7 +31,7 @@ class LibreSpeedModule(BaseModule):
         return self.handler.get_settings()
 
     def action_update_settings(self, data):
-        res = self.handler.update_settings(**data)
+        res = self.handler.update_settings(server_id_in_data="server_id" in data, **data)
         if res:
             self.notify("update_settings", data)
         return {"result": res}

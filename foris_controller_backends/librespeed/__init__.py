@@ -43,11 +43,14 @@ class LibreSpeedUci:
             autostart_enabled = parse_bool(
                 get_option_named(data, "librespeed", "client", "autostart_enabled", "0")
             )
+            server_id = get_option_named(data, "librespeed", "client", "server", "") or None
+
         return {
             "autostart_enabled": autostart_enabled,
+            "server_id": server_id,
         }
 
-    def update_settings(self, autostart_enabled):
+    def update_settings(self, server_id_in_data, autostart_enabled, server_id):
 
         with UciBackend() as backend:
             backend.add_section("librespeed", "client", "client")
@@ -57,6 +60,22 @@ class LibreSpeedUci:
                 "autostart_enabled",
                 store_bool(autostart_enabled),
             )
+            if server_id_in_data:
+                if server_id:
+                    backend.set_option(
+                        "librespeed",
+                        "client",
+                        "server",
+                        server_id,
+                    )
+                else:
+                    backend.del_option(
+                        "librespeed",
+                        "client",
+                        "server",
+                        fail_on_error=False,
+                    )
+
         return True
 
     def get_params(self) -> dict:
@@ -66,7 +85,11 @@ class LibreSpeedUci:
             data_dir = get_option_named(
                 data, "librespeed", "client", "data_dir", "/tmp/librespeed-data/"
             )
-        return {"data_dir": data_dir}
+        server_id = get_option_named(data, "librespeed", "client", "server", "") or None
+        return {
+            "data_dir": data_dir,
+            "server_id": server_id,
+        }
 
 
 class LibreSpeedData(BaseFile):
@@ -114,9 +137,12 @@ class LibreSpeedCmds(AsyncCommand):
             )
 
         params = LibreSpeedUci().get_params()
+        server_args = []
+        if params["server_id"] is not None:
+            server_args = ["--server", params["server_id"]]
 
         process_id = self.start_process(
-            ["/usr/bin/turris-librespeed", "--data-dir", params["data_dir"]],
+            ["/usr/bin/turris-librespeed", "--data-dir", params["data_dir"]] + server_args,
             [],
             handler_exit,
             reset_notify,

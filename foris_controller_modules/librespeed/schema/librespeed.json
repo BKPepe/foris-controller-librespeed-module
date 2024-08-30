@@ -18,10 +18,16 @@
                 "data": {
                     "type": "object",
                     "properties": {
-                        "autostart_enabled": {"type": "boolean"}
+                        "autostart_enabled": {"type": "boolean"},
+                        "server_id": {
+                            "oneOf": [
+                                {"type": "null"},
+                                {"type": "string"}
+                            ]
+                        }
                     },
                     "additionalProperties": false,
-                    "required": ["autostart_enabled"]
+                    "required": ["autostart_enabled", "server_id"]
                 }
             },
             "additionalProperties": false,
@@ -36,7 +42,13 @@
                 "data": {
                     "type": "object",
                     "properties": {
-                        "autostart_enabled": {"type": "boolean"}
+                        "autostart_enabled": {"type": "boolean"},
+                        "server_id": {
+                            "oneOf": [
+                                {"type": "null"},
+                                {"type": "string"}
+                            ]
+                        }
                     },
                     "additionalProperties": false,
                     "required": ["autostart_enabled"]
@@ -73,6 +85,12 @@
                     "type": "object",
                     "properties": {
                         "autostart_enabled": {"type": "boolean"},
+                        "server_id": {
+                            "oneOf": [
+                                {"type": "null"},
+                                {"type": "string"}
+                            ]
+                        },
                         "hours_to_run": {
                             "type": "array",
                             "items": {"type": "integer", "minimum": 0, "maximum": 23}

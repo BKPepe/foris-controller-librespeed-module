@@ -43,8 +43,8 @@ class OpenwrtLibreSpeedHandler(Handler, BaseOpenwrtHandler):
         return self.uci.get_settings()
 
     @logger_wrapper(logger)
-    def update_settings(self, autostart_enabled):
-        return self.uci.update_settings(autostart_enabled)
+    def update_settings(self, server_id_in_data, autostart_enabled, server_id=None):
+        return self.uci.update_settings(server_id_in_data, autostart_enabled, server_id)
 
     @logger_wrapper(logger)
     def get_data(self, months, until):

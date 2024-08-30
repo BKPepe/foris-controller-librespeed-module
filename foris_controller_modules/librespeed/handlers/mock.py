@@ -52,16 +52,20 @@ FAKE_DATA = [
 
 class MockLibreSpeedHandler(Handler, BaseMockHandler):
     autostart_enabled = True
+    server_id = None
 
     @logger_wrapper(logger)
     def get_settings(self):
         return {
             "autostart_enabled": self.autostart_enabled,
+            "server_id": self.server_id,
         }
 
     @logger_wrapper(logger)
-    def update_settings(self, autostart_enabled):
+    def update_settings(self, server_id_in_data, autostart_enabled, server_id=None):
         self.autostart_enabled = autostart_enabled
+        if server_id_in_data:
+            self.server_id = server_id
         return True
 
     @logger_wrapper(logger)

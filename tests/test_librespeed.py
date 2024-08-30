@@ -19,12 +19,10 @@
 
 import json
 import shutil
-import textwrap
 from pathlib import Path
 
 import pytest
 from dateutil.parser import parse
-from foris_controller_testtools.utils import FileFaker
 
 FAKE_DATA = [
     {
@@ -77,8 +75,49 @@ def test_settings(uci_configs_init, infrastructure, start_buses):
             "kind": "request",
         }
     )
-    assert set(res["data"].keys()) == {"autostart_enabled"}
+    assert set(res["data"].keys()) == {"autostart_enabled", "server_id"}
     new_autostart_enabled = not res["data"]["autostart_enabled"]
+
+    res = infrastructure.process_message(
+        {
+            "module": "librespeed",
+            "action": "update_settings",
+            "kind": "request",
+            "data": {
+                "autostart_enabled": new_autostart_enabled,
+                "server_id": "10"
+            },
+        }
+    )
+    assert res["data"] == {"result": True}
+
+    notifications = infrastructure.get_notifications(notifications)
+    assert notifications[-1] == {
+        "module": "librespeed",
+        "action": "update_settings",
+        "kind": "notification",
+        "data": {
+            "autostart_enabled": new_autostart_enabled,
+            "server_id": "10"
+        },
+    }
+
+    res = infrastructure.process_message(
+        {
+            "module": "librespeed",
+            "action": "get_settings",
+            "kind": "request",
+        }
+    )
+    assert res == {
+        "module": "librespeed",
+        "action": "get_settings",
+        "kind": "reply",
+        "data": {
+            "autostart_enabled": new_autostart_enabled,
+            "server_id": "10"
+        },
+    }, "set server id"
 
     res = infrastructure.process_message(
         {
@@ -97,7 +136,9 @@ def test_settings(uci_configs_init, infrastructure, start_buses):
         "module": "librespeed",
         "action": "update_settings",
         "kind": "notification",
-        "data": {"autostart_enabled": new_autostart_enabled},
+        "data": {
+            "autostart_enabled": new_autostart_enabled,
+        },
     }
 
     res = infrastructure.process_message(
@@ -113,8 +154,50 @@ def test_settings(uci_configs_init, infrastructure, start_buses):
         "kind": "reply",
         "data": {
             "autostart_enabled": new_autostart_enabled,
+            "server_id": "10"
+        },
+    }, "when `server_id` is not present in update keep the original version"
+
+    res = infrastructure.process_message(
+        {
+            "module": "librespeed",
+            "action": "update_settings",
+            "kind": "request",
+            "data": {
+                "autostart_enabled": new_autostart_enabled,
+                "server_id": None,
+            },
+        }
+    )
+    assert res["data"] == {"result": True}
+
+    notifications = infrastructure.get_notifications(notifications)
+    assert notifications[-1] == {
+        "module": "librespeed",
+        "action": "update_settings",
+        "kind": "notification",
+        "data": {
+            "autostart_enabled": new_autostart_enabled,
+            "server_id": None,
         },
     }
+
+    res = infrastructure.process_message(
+        {
+            "module": "librespeed",
+            "action": "get_settings",
+            "kind": "request",
+        }
+    )
+    assert res == {
+        "module": "librespeed",
+        "action": "get_settings",
+        "kind": "reply",
+        "data": {
+            "autostart_enabled": new_autostart_enabled,
+            "server_id": None,
+        },
+    }, "`server_id` is unset"
 
 
 def test_get_data(uci_configs_init, infrastructure, start_buses, librespeed_data):
