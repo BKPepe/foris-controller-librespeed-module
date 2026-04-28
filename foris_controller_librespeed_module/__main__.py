@@ -1,6 +1,6 @@
 #
 # foris-controller-librespeed-module
-# Copyright (C) 2022 CZ.NIC, z.s.p.o. (http://www.nic.cz/)
+# Copyright (C) 2026 CZ.NIC, z.s.p.o. (http://www.nic.cz/)
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,7 +42,12 @@ def main():
 
     options = parser.parse_args()
 
-    args = [options.bin, "--json"]
+    args = [
+        options.bin,
+        "--json",
+        "--server-json",
+        "https://librespeed.turris.cz/servers.json",
+    ]
     if options.server:
         args.extend(("--server", str(options.server)))
 
