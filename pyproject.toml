@@ -31,6 +31,9 @@ ubus = [
     "ubus",
 ]
 
+[project.entry-points.foris_controller_modules]
+librespeed = "foris_controller_modules.librespeed"
+
 [project.scripts]
 turris-librespeed = "foris_controller_librespeed_module.__main__:main"
 
