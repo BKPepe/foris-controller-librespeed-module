@@ -1,0 +1,20 @@
+config librespeed 'main'
+	option interface 'wan'
+
+config schedule
+	option interface 'lte'
+	option enabled '1'
+	option interval '6h'
+	option days '1,2'
+
+config schedule
+	option interface 'wan6'
+	option enabled '0'
+	option interval '1d'
+	option days '0,6'
+	option hours '3-4'
+
+config schedule
+	option interface 'vpn'
+	option enabled '1'
+	option interval '12h'

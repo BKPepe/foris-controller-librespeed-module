@@ -1,0 +1,12 @@
+config librespeed 'main'
+	option interface 'wan'
+
+config librespeed 'schedule'
+	option enabled '1'
+	option interval '1d'
+	option days '1,2,'
+	option hours '22-4'
+
+config librespeed 'history'
+	option enabled '1'
+	option retention '30d'
